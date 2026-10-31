@@ -9,7 +9,7 @@ const J = (s, d) => { try { return JSON.parse(s); } catch { return d; } };
 const abs = (p) => (p ? (/^https?:\/\//.test(p) ? p : cfg.publicUrl + p) : '');
 const isQuiet = (prefs) => { if (!prefs?.quietHours) return false; const local = new Date(Date.now() - (Number(prefs.tz) || 0) * 60000); const hr = local.getUTCHours(); return hr >= 22 || hr < 7; };
 
-module.exports = function makeStore(db, rt = { emit() {}, emitMany() {}, nearbyChanged() {}, kick() {} }) {
+module.exports = function makeStore(db, rt = { emit() {}, emitMany() {}, nearbyChanged() {}, kick() {}, broadcast() {} }) {
   const q = {
     userById: db.prepare('SELECT * FROM users WHERE id = ?'),
     userByEmail: db.prepare('SELECT * FROM users WHERE email = ?'),
@@ -87,6 +87,7 @@ module.exports = function makeStore(db, rt = { emit() {}, emitMany() {}, nearbyC
     const fs = require('fs'); const path = require('path');
     for (const f of db.prepare('SELECT name FROM uploads WHERE owner = ?').all(id)) fs.rm(path.join(cfg.dataDir, 'uploads', f.name), { force: true }, () => {});
     db.transaction(() => {
+      db.prepare('DELETE FROM help_requests WHERE user_id = ? OR post_id IN (SELECT id FROM help_posts WHERE owner = ?)').run(id, id); db.prepare('DELETE FROM help_posts WHERE owner = ?').run(id);
       for (const t of ['links:a', 'links:b', 'blocks:blocker', 'blocks:blocked', 'reports:reporter', 'reports:target', 'messages:sender', 'messages:receiver', 'chat_state:user_id', 'chat_state:peer', 'notifications:user_id', 'uploads:owner', 'face_sessions:user_id', 'waves:a', 'waves:b', 'passes:viewer', 'passes:target', 'feedback:user_id', 'codes:user_id'].map((x) => x.split(':')))
         db.prepare(`DELETE FROM ${t[0]} WHERE ${t[1]} = ?`).run(id);
       db.prepare('DELETE FROM users WHERE id = ?').run(id);
