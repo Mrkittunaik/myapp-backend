@@ -47,6 +47,16 @@ function open(dir = cfg.dataDir) {
   CREATE TABLE IF NOT EXISTS uploads (name TEXT PRIMARY KEY, owner TEXT NOT NULL, at INTEGER NOT NULL);
   CREATE TABLE IF NOT EXISTS face_sessions (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, steps TEXT NOT NULL, expires INTEGER NOT NULL, used INTEGER NOT NULL DEFAULT 0, at INTEGER NOT NULL);
   CREATE TABLE IF NOT EXISTS passes (viewer TEXT NOT NULL, target TEXT NOT NULL, at INTEGER NOT NULL, PRIMARY KEY (viewer, target));
+  CREATE TABLE IF NOT EXISTS help_posts (
+    id TEXT PRIMARY KEY, owner TEXT NOT NULL, category TEXT NOT NULL, title TEXT NOT NULL, body TEXT NOT NULL, offer INTEGER NOT NULL DEFAULT 0,
+    pref TEXT NOT NULL DEFAULT 'Anyone', status TEXT NOT NULL DEFAULT 'open', accepted TEXT, created_at INTEGER NOT NULL, expires INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS help_open ON help_posts(status, created_at);
+  CREATE INDEX IF NOT EXISTS help_owner ON help_posts(owner, created_at);
+  CREATE TABLE IF NOT EXISTS help_requests (
+    post_id TEXT NOT NULL, user_id TEXT NOT NULL, note TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'pending', at INTEGER NOT NULL, PRIMARY KEY (post_id, user_id)
+  );
+  CREATE INDEX IF NOT EXISTS help_req_user ON help_requests(user_id);
   CREATE TABLE IF NOT EXISTS waves (a TEXT NOT NULL, b TEXT NOT NULL, at INTEGER NOT NULL, PRIMARY KEY (a, b));
   CREATE TABLE IF NOT EXISTS feedback (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL, text TEXT NOT NULL, at INTEGER NOT NULL);
   CREATE TABLE IF NOT EXISTS counters (name TEXT PRIMARY KEY, val INTEGER NOT NULL);
