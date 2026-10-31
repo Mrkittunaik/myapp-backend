@@ -11,6 +11,7 @@ function createHub() {
 
   const send = (ws, o) => { if (ws.readyState === 1) { try { ws.send(JSON.stringify(o)); } catch { /* socket closing */ } } };
   const emit = (userId, t) => { const set = conns.get(String(userId)); if (set) for (const ws of set) send(ws, { t }); };
+  const broadcast = (t) => { for (const set of conns.values()) for (const ws of set) send(ws, { t }); };
   const emitMany = (ids, t) => { for (const id of new Set(ids)) emit(id, t); };
   // Hint every online person whose Nearby list may have changed because `me` moved, appeared or vanished.
   function nearbyChanged(me, radiusM = 20000) {
@@ -59,6 +60,6 @@ function createHub() {
     return wss;
   }
   const kick = (id) => { const set = conns.get(String(id)); if (set) for (const ws of [...set]) ws.close(4003, 'unauthorized'); };
-  return { attach, kick, emit, emitMany, nearbyChanged, online: () => [...conns.keys()] };
+  return { attach, kick, broadcast, emit, emitMany, nearbyChanged, online: () => [...conns.keys()] };
 }
 module.exports = { createHub };
