@@ -12,19 +12,25 @@ function row(u) {
 }
 async function load() {
   try {
+    if (mode === 'posts') {
+      const j = await api('GET', '/posts'); $('stat').textContent = `${j.posts.length} latest help posts`;
+      $('list').innerHTML = j.posts.map((p) => `<div class="card"><div class="info"><b>${esc(p.title)}</b> <span class="tag">${esc(p.category)}</span> <span class="tag">${esc(p.status)}</span> ${p.offer ? '₹' + p.offer : ''}<br><small>${esc(p.ownerName)} · ${esc(p.ownerEmail)} · ${esc(p.ownerId)}</small><p>${esc(p.body)}</p></div>
+        <div style="display:flex;flex-direction:column;gap:6px">${p.status !== 'closed' ? `<button data-a="rmpost" data-id="${esc(p.id)}" class="r">Remove post</button>` : ''}<button data-a="ban" data-id="${esc(p.ownerId)}" class="g">Ban poster</button></div></div>`).join('') || '<p>No posts.</p>'; return;
+    }
     const j = mode === 'reports' ? await api('GET', '/reports') : await api('GET', '/users?q=' + encodeURIComponent($('q').value));
     $('stat').textContent = mode === 'reports' ? `${j.people.length} reported people · ${j.totalUsers} users · ${j.banned} banned` : `${j.people.length} found`;
     $('list').innerHTML = j.people.map(row).join('') || '<p>Nothing here.</p>';
   } catch (e) { $('stat').textContent = 'Error: ' + e.message; $('list').innerHTML = ''; }
 }
 $('go').onclick = () => { token = $('tok').value.trim(); sessionStorage.setItem('adm', token); mode = 'reports'; load(); };
-$('rep').onclick = () => { mode = 'reports'; load(); }; $('find').onclick = () => { mode = 'users'; load(); };
+$('rep').onclick = () => { mode = 'reports'; load(); }; $('posts').onclick = () => { mode = 'posts'; load(); }; $('find').onclick = () => { mode = 'users'; load(); };
 $('list').onclick = async (e) => {
   const b = e.target.closest('button'); if (!b) return; const id = b.dataset.id, a = b.dataset.a;
   try {
     if (a === 'ban') { const reason = prompt('Reason (kept for your records):', 'Violated community guidelines'); if (reason === null) return; await api('POST', `/users/${id}/ban`, { reason }); }
     else if (a === 'unban') await api('POST', `/users/${id}/unban`);
     else if (a === 'photos') { if (!confirm('Remove all photos of this person?')) return; await api('POST', `/users/${id}/clear-photos`); }
+    else if (a === 'rmpost') { if (!confirm('Remove this post?')) return; await api('POST', `/posts/${id}/remove`); }
     else if (a === 'dismiss') await api('POST', `/reports/${id}/dismiss`);
     load();
   } catch (err) { alert(err.message); }
