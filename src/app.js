@@ -44,6 +44,7 @@ function createApp(dir) {
   app.use(require('./routes/upload')(ctx));
   app.use(require('./routes/face')(ctx));
   app.use(require('./routes/social')(ctx));
+  app.use(require('./routes/help')(ctx));
   app.use('/admin', require('./routes/admin')(ctx));
 
   app.use((req, res) => res.status(404).json({ error: 'Not found' }));
