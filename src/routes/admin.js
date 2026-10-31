@@ -16,7 +16,7 @@ module.exports = function adminRoutes({ db, store, rt }) {
     next();
   };
   const page = (file, type) => (req, res, next) => { if (!cfg.adminToken) return next(new HttpError(404, 'Not found')); res.type(type).send(fs.readFileSync(path.join(__dirname, '..', 'admin', file), 'utf8')); };
-  r.get('/', page('index.html', 'html')); r.get('/admin.js', page('admin.js', 'js'));
+  r.get('/', page('index.html', 'html')); r.get('/panel.js', page('panel.js', 'js'));
 
   const card = (u) => ({ id: u.id, name: u.name, email: u.email, age: store.toPublic(u).age, photos: store.toPublic(u).photos, bio: u.bio, banned: !!u.banned, banReason: u.ban_reason || '', createdAt: u.created_at });
   // Everyone who was reported, most reports first.
@@ -43,6 +43,10 @@ module.exports = function adminRoutes({ db, store, rt }) {
     for (const f of db.prepare('SELECT name FROM uploads WHERE owner = ?').all(u.id)) { db.prepare('DELETE FROM uploads WHERE name = ?').run(f.name); fs.rm(path.join(cfg.dataDir, 'uploads', f.name), { force: true }, () => {}); }
     rt.emit(u.id, 'sync'); res.json({ ok: true });
   }));
+  r.get('/api/posts', gate, h(async (req, res) => {
+    res.json({ posts: db.prepare("SELECT p.*, u.name owner_name, u.email owner_email FROM help_posts p JOIN users u ON u.id = p.owner ORDER BY p.created_at DESC LIMIT 100").all().map((p) => ({ id: p.id, category: p.category, title: p.title, body: p.body, offer: p.offer, status: p.status, ownerId: p.owner, ownerName: p.owner_name, ownerEmail: p.owner_email, createdAt: p.created_at })) });
+  }));
+  r.post('/api/posts/:id/remove', gate, h(async (req, res) => { db.prepare("UPDATE help_posts SET status = 'closed' WHERE id = ?").run(String(req.params.id)); db.prepare("UPDATE help_requests SET status = 'closed' WHERE post_id = ? AND status = 'pending'").run(String(req.params.id)); rt.broadcast('help'); res.json({ ok: true }); }));
   r.post('/api/reports/:id/dismiss', gate, h(async (req, res) => { db.prepare('DELETE FROM reports WHERE target = ?').run(String(req.params.id)); res.json({ ok: true }); }));
   return r;
 };
