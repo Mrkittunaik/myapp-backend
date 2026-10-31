@@ -31,5 +31,7 @@ module.exports = function makeRetention(db) {
     "SELECT id, image FROM messages WHERE deleted = 0 AND ((sender = ? AND receiver = ?) OR (sender = ? AND receiver = ?)) ORDER BY at DESC, rev DESC LIMIT -1 OFFSET ?").all(x, y, y, x, keep));
   const trimAll = (keep = cfg.messageKeep) => remove(db.prepare(
     `SELECT id, image FROM (SELECT id, image, ROW_NUMBER() OVER (PARTITION BY MIN(sender, receiver) || '|' || MAX(sender, receiver) ORDER BY at DESC, rev DESC) rn FROM messages WHERE deleted = 0) WHERE rn > ?`).all(keep));
-  return { purgeExpired, trimPair, trimAll, dropImage, purge: (now) => { const n = purgeExpired(now) + trimAll(); if (n) { try { db.pragma('wal_checkpoint(TRUNCATE)'); } catch { /* busy: next sweep */ } } return n; } };
+  // Help-board posts live 30 days (hidden after that) and their rows are removed after 40 days. The monthly post count only needs the current month.
+  const purgeHelp = (now = Date.now()) => { const old = now - 40 * 86400e3; db.prepare('DELETE FROM help_requests WHERE post_id IN (SELECT id FROM help_posts WHERE created_at < ?)').run(old); return db.prepare('DELETE FROM help_posts WHERE created_at < ?').run(old).changes; };
+  return { purgeHelp, purgeExpired, trimPair, trimAll, dropImage, purge: (now) => { purgeHelp(now); const n = purgeExpired(now) + trimAll(); if (n) { try { db.pragma('wal_checkpoint(TRUNCATE)'); } catch { /* busy: next sweep */ } } return n; } };
 };
